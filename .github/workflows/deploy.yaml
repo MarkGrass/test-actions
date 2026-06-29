@@ -1,0 +1,33 @@
+name: Deploy to VPS
+on:
+    pull_request:
+        branches:
+            - dev
+        types: [closed]
+jobs:
+    deploy:
+        if: github.event.pull_request.merged == true
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v3
+
+            - name: Deploy over SSH
+              uses: appleboy/ssh-action@v1.2.5
+              with:
+                  host: ${{ secrets.SSH_HOST }}
+                  username: ${{ secrets.SSH_USER }}
+                  key: ${{ secrets.SSH_KEY }}
+                  port: ${{ secrets.SSH_PORT }}
+                  script: |
+                      if [ -d /home/core/app ]; then
+                        cd /home/core/app
+                        git pull origin dev
+                      else
+                        mkdir /home/core/app
+                        cd /home/core/app
+                        git clone https://github.com/MarkGrass/test-actions.git
+                        cd test-actions
+                      fi
+                      docker compose down
+                      docker compose up -d --build
