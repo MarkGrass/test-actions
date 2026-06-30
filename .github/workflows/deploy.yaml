@@ -7,6 +7,7 @@ on:
 jobs:
     deploy:
         if: github.event.pull_request.merged == true
+        environment: development
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
@@ -14,20 +15,73 @@ jobs:
 
             - name: Deploy over SSH
               uses: appleboy/ssh-action@v1.2.5
+              env:
+                  NODE_ENV: production
+                  APP_NAME: ${{ vars.APP_NAME }}
+                  APP_PORT: ${{ secrets.APP_PORT }}
+                  APP_HOST: ${{ secrets.APP_HOST }}
+                  ALLOWED_ORIGIN: ${{ secrets.ALLOWED_ORIGIN }}
+                  POSTGRES_PORT: ${{ secrets.POSTGRES_PORT }}
+                  POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+                  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+                  POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+                  ACCESS_SECRET: ${{ secrets.ACCESS_SECRET }}
+                  REFRESH_SECRET: ${{ secrets.REFRESH_SECRET }}
+                  ACCESS_LIVE_TIME: ${{ vars.ACCESS_LIVE_TIME || '10m' }}
+                  REFRESH_LIVE_TIME: ${{ vars.REFRESH_LIVE_TIME || '7d' }}
+                  VERIFICATION_CODE_LIVE_TIME: ${{ vars.VERIFICATION_CODE_LIVE_TIME || '30m' }}
+                  VERIFICATION_CODE_MAX_ATTEMPTS: ${{ vars.VERIFICATION_CODE_MAX_ATTEMPTS || '5' }}
+                  MAIL_TRANSPORT: ${{ secrets.MAIL_TRANSPORT }}
+                  MAIL_ADDRESS: ${{ secrets.MAIL_ADDRESS }}
+                  MAIL_USER: ${{ secrets.MAIL_USER }}
+                  MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
               with:
                   host: ${{ secrets.SSH_HOST }}
                   username: ${{ secrets.SSH_USER }}
                   key: ${{ secrets.SSH_KEY }}
                   port: ${{ secrets.SSH_PORT }}
+                  envs: NODE_ENV,APP_NAME,APP_PORT,APP_HOST,ALLOWED_ORIGIN,POSTGRES_PORT,POSTGRES_USER,POSTGRES_PASSWORD,POSTGRES_DB,ACCESS_SECRET,REFRESH_SECRET,ACCESS_LIVE_TIME,REFRESH_LIVE_TIME,VERIFICATION_CODE_LIVE_TIME,VERIFICATION_CODE_MAX_ATTEMPTS,MAIL_TRANSPORT,MAIL_ADDRESS,MAIL_USER,MAIL_PASSWORD
                   script: |
-                      if [ -d /home/core/app ]; then
-                        cd /home/core/app
-                        git pull origin dev
+                      set -e
+
+                      APP_DIR=/home/core/app
+                      REPO_URL=https://github.com/MarkGrass/test-actions.git
+
+                      if [ -d "$APP_DIR/.git" ]; then
+                        cd "$APP_DIR"
+                        git pull --ff-only origin dev
+                      elif [ -d "$APP_DIR/test-actions/.git" ]; then
+                        cd "$APP_DIR/test-actions"
+                        git pull --ff-only origin dev
                       else
-                        mkdir /home/core/app
-                        cd /home/core/app
-                        git clone https://github.com/MarkGrass/test-actions.git
-                        cd test-actions
+                        mkdir -p "$APP_DIR"
+                        cd "$APP_DIR"
+                        git clone --branch dev "$REPO_URL" .
                       fi
+
+                      cat > .env <<EOF
+                      NODE_ENV=$NODE_ENV
+                      APP_NAME=$APP_NAME
+                      APP_PORT=$APP_PORT
+                      APP_HOST=$APP_HOST
+                      ALLOWED_ORIGIN=$ALLOWED_ORIGIN
+                      POSTGRES_HOST=postgres
+                      POSTGRES_PORT=$POSTGRES_PORT
+                      POSTGRES_USER=$POSTGRES_USER
+                      POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+                      POSTGRES_DB=$POSTGRES_DB
+                      POSTGRES_URL=postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@postgres:5432/$POSTGRES_DB
+                      ACCESS_SECRET=$ACCESS_SECRET
+                      REFRESH_SECRET=$REFRESH_SECRET
+                      ACCESS_LIVE_TIME=$ACCESS_LIVE_TIME
+                      REFRESH_LIVE_TIME=$REFRESH_LIVE_TIME
+                      VERIFICATION_CODE_LIVE_TIME=$VERIFICATION_CODE_LIVE_TIME
+                      VERIFICATION_CODE_MAX_ATTEMPTS=$VERIFICATION_CODE_MAX_ATTEMPTS
+                      MAIL_TRANSPORT=$MAIL_TRANSPORT
+                      MAIL_ADDRESS=$MAIL_ADDRESS
+                      MAIL_USER=$MAIL_USER
+                      MAIL_PASSWORD=$MAIL_PASSWORD
+                      EOF
+
                       docker compose down
                       docker compose up -d --build
