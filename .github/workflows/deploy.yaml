@@ -84,4 +84,8 @@ jobs:
                       EOF
 
                       docker compose down
-                      docker compose up -d --build
+                      mkdir -p "$HOME/.tmp"
+                      export TMPDIR="$HOME/.tmp"
+
+                      docker compose build --provenance=false --sbom=false
+                      docker compose up -d
