@@ -49,9 +49,8 @@ export class AuthService {
     }
 
     private verificationCodeExpires() {
-        const liveTime = this.configService.getOrThrow(
-            'VERIFICATION_CODE_LIVE_TIME',
-        );
+        const liveTime =
+            this.configService.get('VERIFICATION_CODE_LIVE_TIME') ?? '30m';
         const duration = ms(liveTime);
 
         return new Date(Date.now() + duration);
