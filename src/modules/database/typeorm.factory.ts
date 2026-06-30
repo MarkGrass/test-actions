@@ -14,6 +14,8 @@ export class TypeORMConfigFactory implements TypeOrmOptionsFactory {
     createTypeOrmOptions(): TypeOrmModuleOptions {
         const isDev =
             this.configService.getOrThrow('NODE_ENV') === 'development';
+        const postgresSsl =
+            this.configService.get<string>('POSTGRES_SSL') === 'true';
 
         return {
             type: 'postgres',
@@ -26,7 +28,7 @@ export class TypeORMConfigFactory implements TypeOrmOptionsFactory {
             dropSchema: false,
             logging: false,
             synchronize: isDev,
-            ssl: !isDev,
+            ssl: postgresSsl,
         };
     }
 }
