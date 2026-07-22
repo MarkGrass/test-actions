@@ -114,7 +114,7 @@ describe('AuthService', () => {
         expect(emailService.sendMail).toHaveBeenCalledWith(
             expect.objectContaining({
                 to: user.email,
-                subject: 'Код подтверждегния',
+                subject: 'Код подтверждения',
                 template: 'verification',
                 context: {
                     code: expect.stringMatching(/^\d{6}$/),
@@ -160,6 +160,74 @@ describe('AuthService', () => {
         expect(userService.create).not.toHaveBeenCalled();
     });
 
+    it('verifies email and rotates tokens', async () => {
+        const { service, userService } = createMocks();
+        const pendingUser = {
+            ...user,
+            emailVerificationCode: 'hashed-verification-code',
+            emailVerificationExpires: new Date(Date.now() + 60_000),
+            emailVerificationAttempts: 1,
+        };
+        const verifiedUser = {
+            ...pendingUser,
+            isVerifiedEmail: true,
+            emailVerificationCode: null,
+            emailVerificationExpires: null,
+            emailVerificationAttempts: 0,
+        };
+        userService.getUserByEmail.mockResolvedValue(pendingUser);
+        userService.updateUser.mockResolvedValue(verifiedUser);
+
+        await expect(
+            service.verifyEmail({
+                email: user.email,
+                code: '123456',
+            }),
+        ).resolves.toEqual({
+            id: user.id,
+            role: 'GUEST',
+            access: 'access-token',
+            refresh: 'refresh-token',
+        });
+        expect(mockVerify).toHaveBeenCalledWith(
+            'hashed-verification-code',
+            '123456',
+        );
+        expect(userService.updateUser).toHaveBeenCalledWith(user.id, {
+            isVerifiedEmail: true,
+            emailVerificationCode: null,
+            emailVerificationExpires: null,
+            emailVerificationAttempts: 0,
+        });
+        expect(userService.updateHashedRefreshToken).toHaveBeenCalledWith(
+            user.id,
+            'hashed-refresh-token',
+        );
+    });
+
+    it('increments attempts when email verification code is invalid', async () => {
+        const { service, userService } = createMocks();
+        const pendingUser = {
+            ...user,
+            emailVerificationCode: 'hashed-verification-code',
+            emailVerificationExpires: new Date(Date.now() + 60_000),
+            emailVerificationAttempts: 1,
+        };
+        userService.getUserByEmail.mockResolvedValue(pendingUser);
+        mockVerify.mockResolvedValue(false);
+
+        await expect(
+            service.verifyEmail({
+                email: user.email,
+                code: '123456',
+            }),
+        ).rejects.toBeInstanceOf(HttpException);
+        expect(userService.updateUser).toHaveBeenCalledWith(user.id, {
+            emailVerificationAttempts: 2,
+        });
+        expect(userService.updateHashedRefreshToken).not.toHaveBeenCalled();
+    });
+
     it('rotates tokens on login for a verified user', async () => {
         const { service, userService } = createMocks();
         const verifiedUser = {
@@ -171,6 +239,24 @@ describe('AuthService', () => {
             service.login(verifiedUser as unknown as User),
         ).resolves.toEqual({
             id: user.id,
+            role: 'GUEST',
+            access: 'access-token',
+            refresh: 'refresh-token',
+        });
+        expect(userService.updateHashedRefreshToken).toHaveBeenCalledWith(
+            user.id,
+            'hashed-refresh-token',
+        );
+    });
+
+    it('rotates tokens on refresh', async () => {
+        const { service, userService } = createMocks();
+
+        await expect(
+            service.refreshToken(user as unknown as User),
+        ).resolves.toEqual({
+            id: user.id,
+            role: 'GUEST',
             access: 'access-token',
             refresh: 'refresh-token',
         });

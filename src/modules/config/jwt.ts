@@ -8,8 +8,7 @@ export const accessJwtConfig = registerAs(
     (): JwtModuleOptions => ({
         secret: process.env.ACCESS_SECRET,
         signOptions: {
-            expiresIn:
-                (process.env.ACCESS_LIVE_TIME as ms.StringValue) ?? '10m',
+            expiresIn: process.env.ACCESS_LIVE_TIME as ms.StringValue,
         },
     }),
 );

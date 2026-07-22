@@ -134,6 +134,15 @@ export class UsersService {
         return await queryBuilder.getMany();
     }
 
+    async getCurrentUser(id: string): Promise<User> {
+        const user = await this.userRepository.findOneBy({ id });
+        if (!user) {
+            throw new NotFoundException(`Пользователь с id ${id} не найден`);
+        }
+
+        return user;
+    }
+
     async getUserById(id: string): Promise<User | null> {
         return await this.userRepository.findOneBy({ id });
     }
@@ -143,7 +152,7 @@ export class UsersService {
     }
 
     async deleteUser(id: string): Promise<void> {
-        const { affected } = await this.userRepository.delete({ id });
+        const { affected } = await this.userRepository.softDelete({ id });
 
         if (!affected) {
             throw new NotFoundException(`Пользователь с id ${id} не найден`);

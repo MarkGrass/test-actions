@@ -5,6 +5,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 
 import { swaggerInit } from '@config';
 import { AppModule } from '@modules/app/app.module';
+import cookieParser from 'cookie-parser';
 import { config as envConfig } from 'dotenv';
 
 envConfig();
@@ -15,6 +16,7 @@ async function bootstrap() {
 
     swaggerInit(app);
 
+    app.setGlobalPrefix('api');
     app.set('query parser', 'extended');
 
     app.useGlobalPipes(
@@ -24,6 +26,8 @@ async function bootstrap() {
             forbidNonWhitelisted: true,
         }),
     );
+
+    app.use(cookieParser());
 
     app.enableCors({
         origin: config.getOrThrow('ALLOWED_ORIGIN'),

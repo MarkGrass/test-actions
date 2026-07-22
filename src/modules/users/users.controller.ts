@@ -8,6 +8,7 @@ import {
     Patch,
     Post,
     Query,
+    Req,
     UseInterceptors,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -27,6 +28,14 @@ import { UsersService } from './users.service';
 @Controller('users')
 export class UsersController {
     constructor(private userService: UsersService) {}
+
+    @ApiOperation({ summary: 'Get current user' })
+    @ApiResponse({ status: 200, type: User })
+    @UseInterceptors(ClassSerializerInterceptor)
+    @Get('/me')
+    me(@Req() req: { user: Pick<User, 'id'> }) {
+        return this.userService.getCurrentUser(req.user.id);
+    }
 
     @ApiOperation({ summary: 'Create new user' })
     @UseInterceptors(ClassSerializerInterceptor)
