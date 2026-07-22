@@ -32,10 +32,10 @@ describe('UsersService', () => {
     const createRepository = () => ({
         create: jest.fn(),
         createQueryBuilder: jest.fn(),
-        delete: jest.fn(),
         findOneBy: jest.fn(),
         findOneByOrFail: jest.fn(),
         save: jest.fn(),
+        softDelete: jest.fn(),
         update: jest.fn(),
     });
 
@@ -159,19 +159,38 @@ describe('UsersService', () => {
         });
     });
 
+    it('returns current user by authenticated user id', async () => {
+        const repository = createRepository();
+        const service = new UsersService(repository as never);
+        repository.findOneBy.mockResolvedValue(user);
+
+        await expect(service.getCurrentUser(user.id)).resolves.toBe(user);
+        expect(repository.findOneBy).toHaveBeenCalledWith({ id: user.id });
+    });
+
+    it('throws when current user is missing', async () => {
+        const repository = createRepository();
+        const service = new UsersService(repository as never);
+        repository.findOneBy.mockResolvedValue(null);
+
+        await expect(service.getCurrentUser(user.id)).rejects.toBeInstanceOf(
+            NotFoundException,
+        );
+    });
+
     it('deletes an existing user', async () => {
         const repository = createRepository();
         const service = new UsersService(repository as never);
-        repository.delete.mockResolvedValue({ affected: 1 });
+        repository.softDelete.mockResolvedValue({ affected: 1 });
 
         await expect(service.deleteUser(user.id)).resolves.toBeUndefined();
-        expect(repository.delete).toHaveBeenCalledWith({ id: user.id });
+        expect(repository.softDelete).toHaveBeenCalledWith({ id: user.id });
     });
 
     it('throws when deleting a missing user', async () => {
         const repository = createRepository();
         const service = new UsersService(repository as never);
-        repository.delete.mockResolvedValue({ affected: 0 });
+        repository.softDelete.mockResolvedValue({ affected: 0 });
 
         await expect(service.deleteUser(user.id)).rejects.toBeInstanceOf(
             NotFoundException,

@@ -15,6 +15,7 @@ import { JwtService } from '@nestjs/jwt';
 import { hash, verify } from 'argon2';
 
 import { refreshJwtConfig } from '@config';
+import { VerifyEmailDto } from '@modules/auth/dto/verify-email.dto';
 import { EmailService } from '@modules/email';
 import { UsersService } from '@modules/users';
 import ms from 'ms';
@@ -49,8 +50,9 @@ export class AuthService {
     }
 
     private verificationCodeExpires() {
-        const liveTime =
-            this.configService.get('VERIFICATION_CODE_LIVE_TIME') ?? '30m';
+        const liveTime = this.configService.getOrThrow(
+            'VERIFICATION_CODE_LIVE_TIME',
+        );
         const duration = ms(liveTime);
 
         return new Date(Date.now() + duration);
@@ -69,6 +71,7 @@ export class AuthService {
 
         return {
             id: user.id,
+            role: user.role,
             access,
             refresh,
         };
@@ -92,7 +95,7 @@ export class AuthService {
         return user;
     }
 
-    async verifyEmail(email: string, code: string) {
+    async verifyEmail({ email, code }: VerifyEmailDto) {
         const user = await this.userService.getUserByEmail(email);
         const maxAttempts: number =
             this.configService.get('VERIFICATION_CODE_MAX_ATTEMPTS') ?? 5;
@@ -172,7 +175,7 @@ export class AuthService {
 
         await this.emailService.sendMail({
             to: user.email,
-            subject: 'Код подтверждегния',
+            subject: 'Код подтверждения',
             template: 'verification',
             context: { code },
         });

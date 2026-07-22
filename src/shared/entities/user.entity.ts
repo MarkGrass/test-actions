@@ -24,11 +24,6 @@ export class User extends BaseEntity {
     @Column({ type: 'varchar', length: 255, nullable: true })
     name: string | null;
 
-    @ApiProperty({
-        example: '$2b$10$AQiIpGH/jXrVtfm0EIWwG.D1O1gzM7z32/8Gsb/Gbx30486wQtiEa',
-        description:
-            'User password as hash, protected field only for backend, not showing on front',
-    })
     @Exclude()
     @Column({ type: 'varchar', length: 255 })
     password: string;
@@ -57,7 +52,8 @@ export class User extends BaseEntity {
             'ACTIVE - active user with a paid subscription,' +
             'INACTIVE - a user whose last login was more then 1 month ago,' +
             'FROZEN - user without a paid subscription,' +
-            'BLOCKED - user blocked by administrator',
+            'BLOCKED - user blocked by administrator' +
+            'DELETED - soft deleted user',
     })
     @Column({ type: 'enum', enum: USER_STATUS, default: USER_STATUS.ACTIVE })
     status: USER_STATUS;
